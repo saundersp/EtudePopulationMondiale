@@ -1,4 +1,6 @@
 .vscode
 .ipynb_checkpoints
-converted
-original files
+data
+venv
+libs
+jupyter

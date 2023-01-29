@@ -1,2 +1,2 @@
-jupyterlab==3.0.16
-jupyterlab-git==0.30.1
+jupyterlab==3.5.2
+jupyterlab-git==0.41.0

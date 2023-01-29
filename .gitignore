@@ -1,6 +1,5 @@
 .vscode
 .ipynb_checkpoints
-data
 venv
 libs
 jupyter

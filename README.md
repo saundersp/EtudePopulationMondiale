@@ -72,6 +72,7 @@ jupyter lab
 
 ```bash
 ./helper.sh install
+./helper.sh kernel
 ./helper.sh launch
 ```
 

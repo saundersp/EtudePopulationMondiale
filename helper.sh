@@ -1,64 +1,81 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-USAGE="Jupyterlab portable helper\nImplemented by Pierre Saunders, 2021\n\nDocumentation:\n\t$0 install\n\tInstall Jupyterlab locally to the script.\n\n\t$0 uninstall\n\tUninstall Jupyterlab locally to the script.\n\n\t$0 launch\n\tLaunch Jupyterlab locally to the script (Require installation beforehand).\n\n\t$0 help\n\tWhich display this help message."
+USAGE="Jupyterlab portable helper
+Implemented by Pierre Saunders, 2021
+
+USAGE: $0 FLAG
+Available flags:
+	i, -i, install, --install		Install Jupyterlab locally to the script.
+	k, -k, kernel, --kernel			Install the R kernel extension to jupyter
+	u, -u, update, --update			Update every python packages of the local virtual environnement.
+	U, -U, uninstall, --uninstall		Uninstall Jupyterlab locally to the script.
+	l, -l, launch, --launch			Launch Jupyterlab locally to the script (Require installation beforehand).
+	h, -h, help, --help			Which display this help message."
 
 VENV_PATH=./venv
 JUPYTER_ROOT_PATH=./jupyter
-export JUPYTERLAB_SETTINGS_DIR=$JUPYTER_ROOT_PATH/settings
-export JUPYTERLAB_WORKSPACES_DIR=$JUPYTER_ROOT_PATH/workspace
-export JUPYTER_CONFIG_DIR=$JUPYTER_ROOT_PATH/config
-export JUPYTER_RUNTIME_DIR=$JUPYTER_ROOT_PATH/runtime
-export JUPYTER_DATA_DIR=$JUPYTER_ROOT_PATH/data
 export R_LIBS_SITE=./libs
+export JUPYTER_ALLOW_INSECURE_WRITES=0
+export JUPYTERLAB_SETTINGS_DIR="$JUPYTER_ROOT_PATH"/settings
+export JUPYTERLAB_WORKSPACES_DIR="$JUPYTER_ROOT_PATH"/workspace
+export JUPYTER_CONFIG_DIR="$JUPYTER_ROOT_PATH"/config
+export JUPYTER_RUNTIME_DIR="$JUPYTER_ROOT_PATH"/runtime
+export JUPYTER_DATA_DIR="$JUPYTER_ROOT_PATH"/data
 
 enable_venv(){
-	if [[ ! -d $VENV_PATH ]]; then
-		echo "Python virtual envrionnement not installed"
-		exit 1
-	fi
+	test ! -d "$VENV_PATH" && echo 'Python virtual envrionnement not installed' && exit 1
 
 	case "$1" in
-		--windows|-W) local ENV_PATH=$VENV_PATH/Scripts/activate ;;
-		'') 		  local ENV_PATH=$VENV_PATH/bin/activate ;;
-		*)
-			echo "Invalid option"
-			exit 1
-		;;
+		--windows|-W)	ENV_PATH="$VENV_PATH"/Scripts/activate ;;
+		'')		ENV_PATH="$VENV_PATH"/bin/activate ;;
+		*)		echo 'Invalid selected OS' && exit 1 ;;
 	esac
 
-	if [[ ! -f $ENV_PATH ]]; then
-		echo "Invalid selected OS"
-		exit 1
-	fi
-	source $ENV_PATH
+	test ! -f "$ENV_PATH" && echo 'Installation is corrupted, please reinstall' && exit 1
+	. "$ENV_PATH"
 }
 
 case "$1" in
-	install)
-		python -m venv $VENV_PATH
-		enable_venv $2
+	i|-i|install|--install)
+		python -m venv "$VENV_PATH"
+		enable_venv "$2"
 		pip install -r requirements.txt
-		mkdir $JUPYTER_ROOT_PATH $JUPYTER_ROOT_PATH/settings $JUPYTER_ROOT_PATH/workspace \
-			$JUPYTER_ROOT_PATH/config $JUPYTER_ROOT_PATH/runtime $JUPYTER_ROOT_PATH/data \
-			$R_LIBS_SITE 2>>/dev/null
+		mkdir -p "$JUPYTER_ROOT_PATH"/{settings,workspace,config,runtime,data}
+		mkdir -p "$JUPYTERLAB_SETTINGS_DIR"/@jupyterlab/notebook-extension
+		echo '{ "maxNumberOutputs": 0 }' > "$JUPYTERLAB_SETTINGS_DIR"/@jupyterlab/notebook-extension/tracker.jupyterlab-settings
+	;;
 
+	k|-k|kernel|--kernel)
+		enable_venv "$2"
+		mkdir -p "$R_LIBS_SITE"
 		Rscript -e 'install.packages("IRkernel",repos="http://cran.us.r-project.org");library(IRkernel);IRkernel::installspec()'
 	;;
 
-	check)
-		enable_venv $2
+	c|-c|check|--check)
+		enable_venv "$2"
 		pip check
 	;;
 
-	uninstall)
-		rm -rf $R_LIBS_SITE $VENV_PATH $JUPYTER_ROOT_PATH
+	u|-u|update|--update)
+		enable_venv "$2"
+		python -m pip install -U pip
+		pip freeze | xargs -n1 pip install -U
 	;;
 
-	launch)
-		enable_venv $2
-		jupyter lab
+	U|-U|uninstall|--uninstall)
+		rm -rf "$VENV_PATH" "$JUPYTER_ROOT_PATH" "$R_LIBS_SITE"
 	;;
 
-	help) echo -e "$USAGE" ;;
-	*)	  echo -e "$USAGE" ;;
+	l|-l|launch|--launch)
+		enable_venv "$2"
+		if command -v jupyter >> /dev/null; then
+			jupyter lab
+		else
+			echo "Jupyter lab isn't installed"
+			exit 1
+		fi
+	;;
+
+	h|-h|help|--help) echo "$USAGE" ;;
+	*)		  echo "$USAGE" && exit 1 ;;
 esac
